@@ -1,0 +1,21 @@
+name: deferly
+description: >-
+  Go-style defer and recover for Dart. Register cleanup actions that run in
+  LIFO order when a sync or async function exits, and recover from errors.
+version: 1.0.0
+repository: https://github.com/a-h-mzd/deferly
+issue_tracker: https://github.com/a-h-mzd/deferly/issues
+
+topics:
+  - defer
+  - cleanup
+  - resource-management
+  - async
+  - error-handling
+
+environment:
+  sdk: '>=2.12.0 <4.0.0'
+
+dev_dependencies:
+  lints: '>=5.0.0 <7.0.0'
+  test: ^1.25.0

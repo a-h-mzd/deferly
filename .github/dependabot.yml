@@ -1,0 +1,13 @@
+version: 2
+updates:
+  # Keeps the pinned GitHub Actions commit SHAs up to date.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+
+  # Dev dependencies only; the package has no runtime dependencies.
+  - package-ecosystem: pub
+    directory: /
+    schedule:
+      interval: monthly

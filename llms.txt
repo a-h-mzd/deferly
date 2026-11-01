@@ -1,0 +1,94 @@
+# deferly
+
+> Go-style `defer` and `recover` for Dart. Wrap a function body with `deferly` (sync) or `deferlyAsync` (async), register cleanup actions with `defer(action)`, and they run in reverse order (LIFO) when the body returns or throws. Deferred actions can read the propagating error with `defer.recover()` and replace it with a return value using `defer.returns(value)`. Zero dependencies, all platforms (including web and Wasm), Dart SDK >=2.12.0 <4.0.0, MIT license.
+
+Install: `dart pub add deferly` (or `flutter pub add deferly`). Import: `import 'package:deferly/deferly.dart';`
+
+## API
+
+- `R deferly<R>(R Function(Defer<R> defer) body)`: runs `body`, then every deferred action in LIFO order. Use for synchronous bodies only.
+- `Future<R> deferlyAsync<R>(Future<R> Function(AsyncDefer<R> defer) body)`: same for async bodies. Actions may be async; each is awaited before the next runs.
+- `defer(action)`: registers an action. `Defer<R>.call` takes `void Function()`; `AsyncDefer<R>.call` takes `FutureOr<void> Function()`. Tear-offs work: `defer(file.closeSync)`.
+- `defer.recover()`: returns `Object?`, the error currently propagating (from the body or an earlier action), or `null`. It does NOT stop the error.
+- `defer.stackTrace`: `StackTrace?` of the error returned by `recover()`.
+- `defer.returns(value)`: stops the propagating error, if any, and makes the function return `value` (type `R`). Also replaces a normal result. Last call wins. For `void` functions use `defer.returns(null)`.
+
+## Rules
+
+- Wrap the function BODY, not the function: `int f(int x) => deferly((defer) { ...; return x; });`. The function keeps its own signature and static types; `R` is inferred.
+- Every deferred action runs, even if the body or another action throws.
+- If an error is still propagating after the last action, it is rethrown with its original stack trace. If several errors are thrown, the last one wins (as in Go).
+- An action may call `defer` again; the nested action runs right after it, before earlier actions (as in Go).
+- After `recover()`, an action can: call `defer.returns(value)` to return a value instead, `throw` a different error to replace it, or do nothing (e.g. just log) to let it propagate.
+- `defer(...)` after the function has finished throws `StateError`. `recover()` and `returns()` throw `StateError` when no deferred action is running (e.g. from the body).
+
+## Pitfalls
+
+- Do not use `deferly` for `async`, `sync*` or `async*` bodies: cleanup would run before the work finishes. Use `deferlyAsync` for async bodies.
+- Do not pass `async` actions to sync `deferly`; they compile but are not awaited. Use `deferlyAsync`.
+- Actions are closures: they read variables when they run, not when registered. Copy into a `final` local to capture the current value.
+- Unlike Go's `recover()`, `defer.recover()` does not swallow the error; call `defer.returns(value)` for that.
+
+## Examples
+
+```dart
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:deferly/deferly.dart';
+
+// Cleanup next to acquisition, runs in reverse order.
+String read(String path) => deferly((defer) {
+      final file = File(path).openSync();
+      defer(file.closeSync);
+      return utf8.decode(file.readSync(file.lengthSync()));
+    });
+
+// Async body and async cleanup.
+Future<String> fetch(Uri url) => deferlyAsync((defer) async {
+      final client = HttpClient();
+      defer(client.close);
+      final request = await client.getUrl(url);
+      final response = await request.close();
+      return response.transform(utf8.decoder).join();
+    });
+
+// Return a fallback value instead of throwing.
+int parseOr(String input, int fallback) => deferly((defer) {
+      defer(() {
+        if (defer.recover() is FormatException) defer.returns(fallback);
+      });
+      return int.parse(input);
+    });
+
+// Replace the error with a different one.
+int parseStrict(String input) => deferly((defer) {
+      defer(() {
+        final error = defer.recover();
+        if (error != null) throw ArgumentError.value(input, 'input', '$error');
+      });
+      return int.parse(input);
+    });
+
+// Only log the error; it keeps propagating unchanged.
+Future<void> upload(File file) => deferlyAsync((defer) async {
+      defer(() {
+        final error = defer.recover();
+        if (error != null) stderr.writeln('upload failed: $error\n${defer.stackTrace}');
+      });
+      await file.readAsBytes();
+    });
+```
+
+## Docs
+
+- [README](https://github.com/a-h-mzd/deferly/blob/main/README.md): full guide with examples
+- [API reference](https://pub.dev/documentation/deferly/latest/deferly/): generated dartdoc
+- [Example](https://github.com/a-h-mzd/deferly/blob/main/example/main.dart): runnable example
+- [Source](https://github.com/a-h-mzd/deferly/blob/main/lib/deferly.dart): the whole implementation is one file
+
+## Optional
+
+- [pub.dev page](https://pub.dev/packages/deferly)
+- [Changelog](https://github.com/a-h-mzd/deferly/blob/main/CHANGELOG.md)
+- [Issue tracker](https://github.com/a-h-mzd/deferly/issues)

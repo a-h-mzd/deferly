@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Read-only by default. Only the badge job, which runs no third-party
+# packages, gets write access.
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Format, analyze, test and coverage
+    runs-on: ubuntu-latest
+    env:
+      # The build fails if line or branch coverage of lib/ drops below this.
+      MIN_COVERAGE: 100
+    outputs:
+      percent: ${{ steps.coverage.outputs.percent }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+        with:
+          sdk: stable
+
+      - name: Format, analyze, test and check coverage
+        id: coverage
+        run: tool/check.sh
+
+  badge:
+    name: Update coverage badge
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      # Needed to push the badge data to the `badges` branch.
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Update coverage badge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PERCENT: ${{ needs.test.outputs.percent }}
+        run: tool/update_coverage_badge.sh "$PERCENT"
+
+  pana:
+    name: pub.dev score
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: dart-lang/setup-dart@6afc89df92d6eb3834022f73cd65adc8cdfcb92d # v1.8.1
+        with:
+          sdk: stable
+      - run: tool/pana.sh

@@ -1,0 +1,24 @@
+# Dart / pub
+.dart_tool/
+.packages
+build/
+# Libraries should not commit the lockfile:
+# https://dart.dev/guides/libraries/private-files#pubspeclock
+pubspec.lock
+
+# Generated API docs
+doc/api/
+
+# Test coverage
+coverage/
+
+# IDEs and editors
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

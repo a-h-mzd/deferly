@@ -1,0 +1,29 @@
+# NOTE: When a .pubignore file exists, `dart pub publish` uses it INSTEAD of
+# .gitignore for this directory, so the .gitignore entries are repeated here.
+
+# Dart / pub
+.dart_tool/
+.packages
+build/
+pubspec.lock
+
+# Generated API docs
+doc/api/
+
+# Test coverage
+coverage/
+
+# IDEs and editors
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Repository-only files that are not useful in the published package
+.github/
+tool/
